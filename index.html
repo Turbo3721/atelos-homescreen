@@ -544,6 +544,18 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .conv-resume-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px 0;background:var(--accent);border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;margin-top:4px}
 .conv-resume-btn:hover{background:var(--accent-h);transform:translateY(-1px)}
 .conv-detail-summary{font-size:13.5px;color:var(--text2);line-height:1.7}
+/* Task add button + form */
+.task-add-btn{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:7px;border:1px solid var(--border-lt);background:transparent;color:var(--text4);cursor:pointer;transition:all .15s;flex-shrink:0}
+.task-add-btn:hover,.task-add-btn.open{background:var(--accent-d);border-color:var(--accent-b);color:var(--accent)}
+.task-add-form{background:var(--bg-card);border:1px solid var(--border-lt);border-radius:12px;padding:12px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px}
+.task-add-input{background:var(--bg-input);border:1px solid var(--border-lt);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .2s;width:100%}
+.task-add-input:focus{border-color:var(--accent-b)}
+.task-add-input::placeholder{color:var(--text4)}
+.task-add-date{background:var(--bg-input);border:1px solid var(--border-lt);border-radius:8px;padding:8px 12px;color:var(--text);font-size:12px;font-family:inherit;outline:none;transition:border-color .2s;width:100%}
+.task-add-date:focus{border-color:var(--accent-b)}
+.task-add-date::placeholder{color:var(--text4)}
+.task-add-actions{display:flex;gap:8px;justify-content:flex-end}
+
 /* Detail panel tag editing */
 .conv-detail-tag-x{margin-left:5px;opacity:.5;font-size:9px;cursor:pointer;transition:opacity .15s}
 .conv-detail-tag-x:hover{opacity:1}
@@ -1497,28 +1509,53 @@ function renderSideTab(tab, d) {
     }
 
   } else if (tab === 'tasks') {
-    // Tasks tab — hide search bar
-    document.getElementById('sideSearchWrap').style.display = 'none';
+    // Tasks tab — search bar
+    document.getElementById('sideSearchWrap').style.display = '';
+    document.getElementById('sideSearchWrap').innerHTML = `<div class="side-search">
+      <span class="side-search-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+      <input class="side-search-input" id="taskSearchInput" placeholder="Search tasks\u2026" oninput="handleTaskSearch(this.value)" value="${taskSearchQuery}">
+      <button class="side-search-clear" onclick="clearTaskSearch()">&times;</button>
+    </div>`;
+
+    const filteredTasks = taskSearchQuery
+      ? d.tasks.filter(t => t.name.toLowerCase().includes(taskSearchQuery.toLowerCase()) || (t.proj||'').toLowerCase().includes(taskSearchQuery.toLowerCase()))
+      : d.tasks;
+    const filteredInbox = taskSearchQuery
+      ? d.inbox.filter(i => i.title.toLowerCase().includes(taskSearchQuery.toLowerCase()))
+      : d.inbox;
 
     // Task list — collapsible, default expanded
-    html += `<div class="collapsible-header section-header" onclick="toggleCollapsible('tasks')" style="cursor:pointer"><span class="collapsible-chevron open" id="coll-chev-tasks">&#9654;</span><span class="section-title">Tasks</span></div>`;
+    html += `<div class="section-header" style="margin-bottom:10px">
+      <div class="collapsible-header" onclick="toggleCollapsible('tasks')" style="flex:1;cursor:pointer"><span class="collapsible-chevron open" id="coll-chev-tasks">&#9654;</span><span class="section-title">Tasks</span></div>
+      <button class="task-add-btn" onclick="toggleAddTask()" title="Add task" id="taskAddBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>`;
+    html += `<div class="task-add-form" id="taskAddForm" style="display:none">
+      <input class="task-add-input" id="taskAddName" placeholder="Task name\u2026" onkeydown="onTaskAddKey(event)">
+      <input class="task-add-date" id="taskAddDate" placeholder="Due date\u2026" onkeydown="onTaskAddKey(event)">
+      <div class="task-add-actions">
+        <button class="sort-btn ghost" onclick="toggleAddTask()">Cancel</button>
+        <button class="sort-btn primary" onclick="submitAddTask()">Add</button>
+      </div>
+    </div>`;
     html += `<div class="collapsible-body" id="coll-body-tasks" style="max-height:1000px">`;
-    if (d.tasks.length) {
-      for (const t of d.tasks) {
+    if (filteredTasks.length) {
+      for (const t of filteredTasks) {
         const proj = t.proj ? `<span class="task-project">${t.proj}</span> \u00B7 ` : '';
         html += `<div class="task-item"><div class="task-dot"></div><div class="task-content"><div class="task-name">${t.name}</div><div class="task-meta">${proj}Due ${t.date}</div></div></div>`;
       }
     } else {
-      html += `<div class="empty-state">No open tasks right now.<br>Run a meeting parser or weekly review to surface action items.</div>`;
+      html += `<div class="empty-state">${taskSearchQuery ? 'No tasks match your search.' : 'No open tasks right now.'}</div>`;
     }
     html += '</div>';
 
-    // Unsorted section — quick captures + unconfirmed imports (amber left border, below tasks)
-    if (d.inbox.length) {
+    // Unsorted section
+    if (filteredInbox.length) {
       html += `<div class="triage-section" id="sortSection" style="margin-top:12px">`;
-      html += `<div class="collapsible-header sort-label" onclick="toggleCollapsible('triage')" style="margin-bottom:10px"><span class="collapsible-chevron open" id="coll-chev-triage">&#9654;</span> Unsorted <span class="sort-badge">${d.inbox.length}</span></div>`;
+      html += `<div class="collapsible-header sort-label" onclick="toggleCollapsible('triage')" style="margin-bottom:10px"><span class="collapsible-chevron open" id="coll-chev-triage">&#9654;</span> Unsorted <span class="sort-badge">${filteredInbox.length}</span></div>`;
       html += `<div class="collapsible-body" id="coll-body-triage" style="max-height:500px">`;
-      d.inbox.forEach((item, idx) => {
+      filteredInbox.forEach((item, idx) => {
         html += `<div class="sort-item" id="sort-${idx}" onclick="openSort(${idx},'${item.title.replace(/'/g,"\\'")}','${item.date}')"><div><div class="sort-item-name">${item.title}</div><div class="sort-item-date">${item.date}</div></div><span class="sort-item-action">Sort \u2192</span></div>`;
       });
       html += '</div></div>';
@@ -1625,6 +1662,45 @@ function applyConvFiltersAndSort(convs) {
 function filterConversations(query) {
   convSearchQuery = query;
   renderSideTab('conversations', D[currentMode]);
+}
+
+let taskSearchQuery = '';
+
+function handleTaskSearch(query) {
+  taskSearchQuery = query;
+  renderSideTab('tasks', D[currentMode]);
+}
+
+function clearTaskSearch() {
+  taskSearchQuery = '';
+  const input = document.getElementById('taskSearchInput');
+  if (input) input.value = '';
+  renderSideTab('tasks', D[currentMode]);
+}
+
+function toggleAddTask() {
+  const form = document.getElementById('taskAddForm');
+  const btn = document.getElementById('taskAddBtn');
+  if (!form) return;
+  const isOpen = form.style.display !== 'none';
+  form.style.display = isOpen ? 'none' : 'flex';
+  btn && btn.classList.toggle('open', !isOpen);
+  if (!isOpen) document.getElementById('taskAddName').focus();
+}
+
+function onTaskAddKey(e) {
+  if (e.key === 'Enter') submitAddTask();
+  if (e.key === 'Escape') toggleAddTask();
+}
+
+function submitAddTask() {
+  const name = (document.getElementById('taskAddName').value || '').trim();
+  if (!name) { document.getElementById('taskAddName').focus(); return; }
+  const date = (document.getElementById('taskAddDate').value || '').trim() || 'No date';
+  const d = D[currentMode];
+  d.tasks.unshift({ name, date });
+  taskSearchQuery = '';
+  renderSideTab('tasks', d);
 }
 
 function clearConvSearch() {
