@@ -544,6 +544,14 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .conv-resume-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px 0;background:var(--accent);border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;margin-top:4px}
 .conv-resume-btn:hover{background:var(--accent-h);transform:translateY(-1px)}
 .conv-detail-summary{font-size:13.5px;color:var(--text2);line-height:1.7}
+/* Detail panel tag editing */
+.conv-detail-tag-x{margin-left:5px;opacity:.5;font-size:9px;cursor:pointer;transition:opacity .15s}
+.conv-detail-tag-x:hover{opacity:1}
+.conv-detail-tag-add{margin-top:8px}
+.conv-detail-tag-input{background:transparent;border:none;border-bottom:1px solid var(--border-lt);color:var(--text);font-size:12px;font-family:inherit;outline:none;padding:3px 0;width:70px;min-width:70px;transition:border-color .15s}
+.conv-detail-tag-input:focus{border-color:var(--accent)}
+.conv-detail-tag-input::placeholder{color:var(--text4)}
+
 /* Source link in file preview */
 .fv-source{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--accent-d);border:1px solid var(--accent-b);border-radius:10px;margin-bottom:18px;cursor:pointer;transition:all .15s}
 .fv-source:hover{background:var(--accent-b)}
@@ -1761,14 +1769,18 @@ function openConvDetail(convId) {
     <div class="conv-detail-summary">${c.summary}</div>
   </div>`;
 
-  // Tags
-  if (c.tags && c.tags.length) {
-    bodyHtml += `<div class="conv-detail-section">
-      <div class="conv-detail-section-label">Tags</div>
-      <div class="conv-tags" style="gap:6px">`;
-    for (const t of c.tags) bodyHtml += `<span class="conv-tag">${t}</span>`;
-    bodyHtml += `</div></div>`;
+  // Tags (always shown, editable)
+  bodyHtml += `<div class="conv-detail-section">
+    <div class="conv-detail-section-label">Tags</div>
+    <div class="conv-tags" style="gap:6px;align-items:center" id="detailTagList">`;
+  for (const t of (c.tags||[])) {
+    bodyHtml += `<span class="conv-tag" style="cursor:default">${t}<span class="conv-detail-tag-x" onclick="removeConvTag('${c.id}','${t.replace(/'/g,"\\'")}')">✕</span></span>`;
   }
+  bodyHtml += `</div>
+    <div class="conv-detail-tag-add" id="detailTagAdd">
+      <input class="conv-detail-tag-input" id="detailTagInput" placeholder="Add tag…" onkeydown="onDetailTagKey(event,'${c.id}')" oninput="this.style.width=Math.max(70,this.scrollWidth)+'px'">
+    </div>
+  </div>`;
 
   // Outputs
   if (c.outputs && c.outputs.length) {
@@ -1803,6 +1815,48 @@ function openConvDetail(convId) {
   });
 
   document.getElementById('convDetailPanel').classList.add('open');
+}
+
+function onDetailTagKey(e, convId) {
+  if (e.key !== 'Enter') return;
+  const input = document.getElementById('detailTagInput');
+  const tag = input.value.trim();
+  if (!tag) return;
+  const result = findConvById(convId);
+  if (!result) return;
+  if (!result.conv.tags.includes(tag)) {
+    result.conv.tags.push(tag);
+    reRenderConvList();
+    refreshFilterChips();
+  }
+  // Re-render just the tag list in the panel
+  const list = document.getElementById('detailTagList');
+  if (list) {
+    list.innerHTML = result.conv.tags.map(t =>
+      `<span class="conv-tag" style="cursor:default">${t}<span class="conv-detail-tag-x" onclick="removeConvTag('${convId}','${t.replace(/'/g,"\\'")}')">✕</span></span>`
+    ).join('');
+  }
+  input.value = '';
+  input.style.width = '70px';
+  input.focus();
+}
+
+function removeConvTag(convId, tag) {
+  const result = findConvById(convId);
+  if (!result) return;
+  result.conv.tags = result.conv.tags.filter(t => t !== tag);
+  if (activeTagFilters.has(tag)) {
+    activeTagFilters.delete(tag);
+    refreshTagBtn();
+    refreshFilterChips();
+  }
+  reRenderConvList();
+  const list = document.getElementById('detailTagList');
+  if (list) {
+    list.innerHTML = result.conv.tags.map(t =>
+      `<span class="conv-tag" style="cursor:default">${t}<span class="conv-detail-tag-x" onclick="removeConvTag('${convId}','${t.replace(/'/g,"\\'")}')">✕</span></span>`
+    ).join('');
+  }
 }
 
 function closeConvDetail() {
