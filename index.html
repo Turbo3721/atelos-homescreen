@@ -39,6 +39,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .topbar-left{display:flex;align-items:center;gap:12px}
 .sidebar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;color:var(--text3);cursor:pointer;transition:all .15s;border:none;background:transparent;flex-shrink:0}
 .sidebar-toggle:hover{background:var(--bg-hover);color:var(--text2)}
+.sidebar-toggle.sidebar-hidden{background:var(--accent-d);color:var(--accent);border:1px solid var(--accent-b)}
 .logo{width:30px;height:30px;background:linear-gradient(135deg,#a594fd,#7b68ee);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#fff;box-shadow:0 2px 12px rgba(155,138,251,.2)}
 .brand{font-size:16px;font-weight:700;color:var(--text);letter-spacing:.1px}
 .tabs{display:flex;align-items:center;gap:4px;margin-left:20px}
@@ -63,8 +64,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .main{display:flex;flex:1;overflow:hidden}
 
 /* ── Sidebar ── */
-.sidebar{width:var(--sidebar-width);background:var(--bg-side);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;position:relative}
-.sidebar.collapsed{width:0;opacity:0;border-right:none}
+.sidebar{width:var(--sidebar-width);background:var(--bg-side);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;position:relative;transition:width .25s ease,opacity .2s ease,border-color .25s ease}
+.sidebar.collapsed{width:0;opacity:0;border-right-color:transparent}
 .side-resize-handle{position:absolute;top:0;right:-3px;width:6px;height:100%;cursor:col-resize;z-index:20;background:transparent;transition:background .15s}
 .side-resize-handle:hover,.side-resize-handle.dragging{background:var(--accent-b)}
 .side-top{padding:20px 22px 0}
@@ -1033,6 +1034,7 @@ let sidebarCollapsed = false;
 function toggleSidebar() {
   sidebarCollapsed = !sidebarCollapsed;
   document.getElementById('sidebar').classList.toggle('collapsed', sidebarCollapsed);
+  document.querySelector('.sidebar-toggle').classList.toggle('sidebar-hidden', sidebarCollapsed);
 }
 
 // ── Collapsible section helper ──
