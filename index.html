@@ -1523,16 +1523,18 @@ function renderSideTab(tab, d) {
     const tagBtnActive = tagCount > 0 ? ' active' : '';
 
     document.getElementById('sideSearchWrap').style.display = '';
-    document.getElementById('sideSearchWrap').innerHTML = `<div class="conv-header-wrap">
+    document.getElementById('sideSearchWrap').innerHTML = `<div style="display:flex;flex-direction:column;gap:6px">
       <div class="side-search">
         <span class="side-search-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
         <input class="side-search-input" id="convSearchInput" placeholder="Search conversations\u2026" oninput="filterConversations(this.value)" value="${convSearchQuery}">
         <button class="side-search-clear" onclick="clearConvSearch()">&times;</button>
       </div>
+      <div id="convActiveFilters"></div>
       <button class="conv-tag-dropdown-btn${tagBtnActive}" id="convTagBtn" onclick="toggleTagDropdown(event)" title="Filter by tag">
         ${ICON_TAG} ${tagBtnLabel} ${ICON_CHEVRON}
       </button>
     </div>`;
+    refreshFilterChips();
 
     const rawConvs = d.conversations || [];
     let convs = applyConvFiltersAndSort(rawConvs);
@@ -1559,13 +1561,11 @@ function renderConvCard(c) {
   let tags = '';
   for (const t of c.tags.slice(0,3)) {
     const isActive = activeTagFilters.has(t);
-    const xBtn = isActive ? `<span style="margin-left:4px;opacity:.7;font-size:9px;line-height:1">✕</span>` : '';
-    tags += `<span class="conv-tag${isActive?' active-filter':''}" onclick="event.stopPropagation();filterByTag('${t.replace(/'/g,"\\'")}')" title="${isActive?'Remove filter':'Filter by'}: ${t}">${t}${xBtn}</span>`;
+    tags += `<span class="conv-tag${isActive?' active-filter':''}" onclick="event.stopPropagation();filterByTag('${t.replace(/'/g,"\\'")}')" title="Filter by: ${t}">${t}</span>`;
   }
   for (const s of (c.skills||[]).slice(0,2)) {
     const isActive = activeTagFilters.has(s);
-    const xBtn = isActive ? `<span style="margin-left:4px;opacity:.7;font-size:9px;line-height:1">✕</span>` : '';
-    tags += `<span class="conv-tag skill-tag${isActive?' active-filter':''}" onclick="event.stopPropagation();filterByTag('${s.replace(/'/g,"\\'")}')" title="${isActive?'Remove filter':'Filter by'}: ${s}">${ICON_SK} ${s}${xBtn}</span>`;
+    tags += `<span class="conv-tag skill-tag${isActive?' active-filter':''}" onclick="event.stopPropagation();filterByTag('${s.replace(/'/g,"\\'")}')" title="Filter by: ${s}">${ICON_SK} ${s}</span>`;
   }
   if (c.outputs && c.outputs.length) tags += `<span class="conv-tag output">${ICON_OUT} ${c.outputs.length} output${c.outputs.length>1?'s':''}</span>`;
 
@@ -1636,12 +1636,19 @@ function filterByTag(tag) {
     if (activeTagFilters.has(tag)) activeTagFilters.delete(tag);
     else activeTagFilters.add(tag);
   }
-  // Update dropdown items in-place (keep it open)
   refreshTagDropdown();
-  // Update button label
   refreshTagBtn();
-  // Re-render just the conversation list
+  refreshFilterChips();
   reRenderConvList();
+}
+
+function refreshFilterChips() {
+  const el = document.getElementById('convActiveFilters');
+  if (!el) return;
+  if (activeTagFilters.size === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:4px">${[...activeTagFilters].map(t =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:var(--accent);background:var(--accent-d);border:1px solid var(--accent-b);padding:3px 8px 3px 10px;border-radius:20px;cursor:pointer" onclick="filterByTag('${t.replace(/'/g,"\\'")}')">${t}<span style="opacity:.6;font-size:10px;line-height:1;margin-left:2px">✕</span></span>`
+  ).join('')}</div>`;
 }
 
 function refreshTagDropdown() {
