@@ -1524,9 +1524,10 @@ function renderSideTab(tab, d) {
 
     document.getElementById('sideSearchWrap').style.display = '';
     document.getElementById('sideSearchWrap').innerHTML = `<div class="conv-header-wrap">
-      <div class="conv-search" style="position:relative">
-        <span class="conv-search-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-        <input class="conv-search-input" id="convSearchInput" placeholder="Search conversations\u2026" oninput="filterConversations(this.value)" value="${convSearchQuery}">
+      <div class="side-search">
+        <span class="side-search-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+        <input class="side-search-input" id="convSearchInput" placeholder="Search conversations\u2026" oninput="filterConversations(this.value)" value="${convSearchQuery}">
+        <button class="side-search-clear" onclick="clearConvSearch()">&times;</button>
       </div>
       <button class="conv-tag-dropdown-btn${tagBtnActive}" id="convTagBtn" onclick="toggleTagDropdown(event)" title="Filter by tag">
         ${ICON_TAG} ${tagBtnLabel} ${ICON_CHEVRON}
@@ -1558,15 +1559,17 @@ function renderConvCard(c) {
   let tags = '';
   for (const t of c.tags.slice(0,3)) {
     const isActive = activeTagFilters.has(t);
-    tags += `<span class="conv-tag${isActive?' active-filter':''}" onclick="event.stopPropagation();filterByTag('${t.replace(/'/g,"\\'")}')" title="Filter by: ${t}">${t}</span>`;
+    const xBtn = isActive ? `<span style="margin-left:4px;opacity:.7;font-size:9px;line-height:1">✕</span>` : '';
+    tags += `<span class="conv-tag${isActive?' active-filter':''}" onclick="event.stopPropagation();filterByTag('${t.replace(/'/g,"\\'")}')" title="${isActive?'Remove filter':'Filter by'}: ${t}">${t}${xBtn}</span>`;
   }
   for (const s of (c.skills||[]).slice(0,2)) {
     const isActive = activeTagFilters.has(s);
-    tags += `<span class="conv-tag skill-tag${isActive?' active-filter':''}" onclick="event.stopPropagation();filterByTag('${s.replace(/'/g,"\\'")}')" title="Filter by: ${s}">${ICON_SK} ${s}</span>`;
+    const xBtn = isActive ? `<span style="margin-left:4px;opacity:.7;font-size:9px;line-height:1">✕</span>` : '';
+    tags += `<span class="conv-tag skill-tag${isActive?' active-filter':''}" onclick="event.stopPropagation();filterByTag('${s.replace(/'/g,"\\'")}')" title="${isActive?'Remove filter':'Filter by'}: ${s}">${ICON_SK} ${s}${xBtn}</span>`;
   }
   if (c.outputs && c.outputs.length) tags += `<span class="conv-tag output">${ICON_OUT} ${c.outputs.length} output${c.outputs.length>1?'s':''}</span>`;
 
-  return `<div class="conv-card" onclick="openConvDetail('${c.id}')">
+  return `<div class="conv-card" onclick="openConvDetail('${c.id}')" ondblclick="loadConv('${c.id}')">
     <button class="conv-card-menu-btn" id="cmb-${c.id}" onclick="event.stopPropagation();showConvMenu(event,'${c.id}')" title="More options">&#8942;</button>
     <div class="conv-card-title" style="padding-right:22px">${c.title}</div>
     <div class="conv-card-meta">
@@ -1616,6 +1619,13 @@ function applyConvFiltersAndSort(convs) {
 function filterConversations(query) {
   convSearchQuery = query;
   renderSideTab('conversations', D[currentMode]);
+}
+
+function clearConvSearch() {
+  convSearchQuery = '';
+  const input = document.getElementById('convSearchInput');
+  if (input) input.value = '';
+  reRenderConvList();
 }
 
 function filterByTag(tag) {
