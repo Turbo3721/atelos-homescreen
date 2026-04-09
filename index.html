@@ -545,6 +545,29 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .conv-resume-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px 0;background:var(--accent);border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;margin-top:4px}
 .conv-resume-btn:hover{background:var(--accent-h);transform:translateY(-1px)}
 .conv-detail-summary{font-size:13.5px;color:var(--text2);line-height:1.7}
+/* Project picker (new conv empty state) */
+.conv-project-picker{display:flex;flex-direction:column;align-items:center;gap:10px;margin:4px 0 20px;width:100%}
+.conv-project-picker-label{font-size:12px;color:var(--text4);font-weight:500}
+.conv-project-picker-options{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.conv-project-btn{padding:6px 16px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--border-lt);background:transparent;color:var(--text3);cursor:pointer;transition:all .15s;font-family:inherit}
+.conv-project-btn:hover{border-color:var(--accent-b);color:var(--accent);background:var(--accent-d)}
+.conv-project-btn.selected{border-color:var(--accent-b);color:var(--accent);background:var(--accent-d);font-weight:600}
+
+/* Fallback assign banner */
+.conv-assign-banner{display:flex;flex-direction:column;gap:10px;padding:14px 18px;background:var(--bg-card);border:1px solid var(--border-lt);border-radius:14px;margin:4px 0 8px}
+.conv-assign-banner-text{font-size:12.5px;color:var(--text3)}
+.conv-assign-options{display:flex;flex-wrap:wrap;gap:6px}
+.conv-assign-opt{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--border-lt);background:transparent;color:var(--text3);cursor:pointer;transition:all .15s;font-family:inherit}
+.conv-assign-opt:hover{border-color:var(--accent-b);color:var(--accent);background:var(--accent-d)}
+.conv-assign-dismiss{font-size:11.5px;color:var(--text4);cursor:pointer;margin-top:2px;transition:color .15s}
+.conv-assign-dismiss:hover{color:var(--text3)}
+
+/* Move to project in detail panel */
+.conv-detail-move-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.conv-detail-move-btn{padding:4px 12px;border-radius:20px;font-size:11.5px;font-weight:500;border:1px solid var(--border-lt);background:transparent;color:var(--text3);cursor:pointer;transition:all .15s;font-family:inherit}
+.conv-detail-move-btn:hover{border-color:var(--accent-b);color:var(--accent);background:var(--accent-d)}
+.conv-detail-move-btn.current{color:var(--text2);border-color:var(--border);cursor:default;font-weight:600}
+
 /* Task add button + form */
 .task-add-btn{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:7px;border:1px solid var(--border-lt);background:transparent;color:var(--text4);cursor:pointer;transition:all .15s;flex-shrink:0}
 .task-add-btn:hover,.task-add-btn.open{background:var(--accent-d);border-color:var(--accent-b);color:var(--accent)}
@@ -1087,6 +1110,8 @@ function renderMsg(m){
 
 // ── Conversation model ──
 let activeConvId = null;
+let pendingProjectKey = null;   // project selected upfront before first send
+let newConvIsFirstMsg = false;  // whether current new conv hasn't been sent yet
 
 function findThreadById(threads, id) {
   return threads.find(t => t.id === id);
@@ -1132,28 +1157,52 @@ function loadConv(convId) {
 
 function newConversation() {
   activeConvId = null;
+  pendingProjectKey = null;
+  newConvIsFirstMsg = true;
   const d = D[currentMode];
 
-  // Clear conv bar
   document.getElementById('convBarTitle').textContent = 'New conversation';
   document.getElementById('convBarTitle').classList.add('empty');
   document.getElementById('convBarMeta').innerHTML = '';
 
-  // Show an empty state with suggested prompts
+  // Option 3 — project picker shown upfront in All Projects
+  const projectPicker = currentMode === 'vault' ? `
+    <div class="conv-project-picker">
+      <div class="conv-project-picker-label">Which project is this for?</div>
+      <div class="conv-project-picker-options">
+        ${Object.keys(D).filter(k => k !== 'vault').map(k =>
+          `<button class="conv-project-btn" id="ppbtn-${k}" onclick="selectNewConvProject('${k}')">${D[k].name}</button>`
+        ).join('')}
+        <button class="conv-project-btn" id="ppbtn-vault" onclick="selectNewConvProject('vault')">Keep in All Projects</button>
+      </div>
+    </div>` : '';
+
   const suggests = d.tasks.length
     ? `<div class="conv-suggest-list">
         ${d.tasks.slice(0,3).map(t => `<div class="conv-suggest" onclick="injectSuggest(this,'${t.name.replace(/'/g,"\\'")}')">${t.name}</div>`).join('')}
       </div>`
     : '';
+
   document.getElementById('chat').innerHTML = `<div class="conv-empty-state">
     <div class="conv-empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
     <div class="conv-empty-title">Ask anything about ${d.name === 'All Projects' ? 'your projects' : d.name}</div>
+    ${projectPicker}
     <div class="conv-empty-hint">Or pick up from an open task:</div>
     ${suggests}
   </div>`;
 
   document.querySelectorAll('.conv-card').forEach(el => el.classList.remove('active'));
   document.getElementById('chatInput').placeholder = d.placeholder;
+  document.getElementById('chatInput').focus();
+}
+
+function selectNewConvProject(key) {
+  pendingProjectKey = key;
+  document.querySelectorAll('.conv-project-btn').forEach(b => b.classList.remove('selected'));
+  const btn = document.getElementById('ppbtn-' + key);
+  if (btn) btn.classList.add('selected');
+  const label = key === 'vault' ? 'All Projects' : D[key].name;
+  document.getElementById('chatInput').placeholder = `Ask anything about ${label}\u2026`;
   document.getElementById('chatInput').focus();
 }
 
@@ -1338,19 +1387,36 @@ function onMainSend() {
   input.value = '';
 
   const chat = document.getElementById('chat');
+  const isFirstMsg = newConvIsFirstMsg;
+  const assignedKey = pendingProjectKey;
+  newConvIsFirstMsg = false;
 
-  // If showing empty state, clear it
   if (chat.querySelector('.conv-empty-state')) chat.innerHTML = '';
 
-  // Append user message
   chat.insertAdjacentHTML('beforeend', renderMsg({type:'user', body: text}));
   document.querySelector('.chat-area').scrollTop = document.querySelector('.chat-area').scrollHeight;
 
-  // Simulate AI response
   setTimeout(() => {
     const d = D[currentMode];
-    chat.insertAdjacentHTML('beforeend', renderMsg({type:'ai', body:`Got it. Based on your ${d.name} context, I\u2019ll work on that now\u2026<br><br><span style="color:var(--text3)">[This is a prototype \u2014 real responses will draw from your vault files.]</span>`}));
+    const contextName = assignedKey && assignedKey !== 'vault' ? D[assignedKey].name : d.name;
+    chat.insertAdjacentHTML('beforeend', renderMsg({type:'ai', body:`Got it. Based on your ${contextName} context, I\u2019ll work on that now\u2026<br><br><span style="color:var(--text3)">[This is a prototype \u2014 real responses will draw from your vault files.]</span>`}));
     document.querySelector('.chat-area').scrollTop = document.querySelector('.chat-area').scrollHeight;
+
+    // Option 2 — fallback banner if first msg in All Projects with no project selected
+    if (isFirstMsg && currentMode === 'vault' && !assignedKey) {
+      const banner = document.createElement('div');
+      banner.className = 'conv-assign-banner';
+      banner.id = 'assignBanner';
+      banner.innerHTML = `<div class="conv-assign-banner-text">Assign this conversation to a project?</div>
+        <div class="conv-assign-options">
+          ${Object.keys(D).filter(k => k !== 'vault').map(k =>
+            `<button class="conv-assign-opt" onclick="assignAndDismissBanner('${k}')">${D[k].name}</button>`
+          ).join('')}
+        </div>
+        <span class="conv-assign-dismiss" onclick="dismissAssignBanner()">Keep in All Projects</span>`;
+      chat.appendChild(banner);
+      document.querySelector('.chat-area').scrollTop = document.querySelector('.chat-area').scrollHeight;
+    }
   }, 700);
 }
 
@@ -1841,6 +1907,19 @@ function openConvDetail(convId) {
   // Body
   let bodyHtml = '';
 
+  // Option 1 — Move to project
+  const convProjectKey = findConvById(c.id) ? findConvById(c.id).projectKey : 'vault';
+  const projectKeys = Object.keys(D);
+  bodyHtml += `<div class="conv-detail-section">
+    <div class="conv-detail-section-label">Project</div>
+    <div class="conv-detail-move-row">
+      ${projectKeys.map(k => {
+        const isCurrent = k === convProjectKey;
+        return `<button class="conv-detail-move-btn${isCurrent ? ' current' : ''}" ${isCurrent ? 'disabled' : `onclick="moveConvToProject('${c.id}','${k}')"`}>${D[k].name}</button>`;
+      }).join('')}
+    </div>
+  </div>`;
+
   // Summary
   bodyHtml += `<div class="conv-detail-section">
     <div class="conv-detail-section-label">Summary</div>
@@ -1935,6 +2014,31 @@ function removeConvTag(convId, tag) {
       `<span class="conv-tag" style="cursor:default">${t}<span class="conv-detail-tag-x" onclick="removeConvTag('${convId}','${t.replace(/'/g,"\\'")}')">✕</span></span>`
     ).join('');
   }
+}
+
+function moveConvToProject(convId, targetKey) {
+  const result = findConvById(convId);
+  if (!result || result.projectKey === targetKey) return;
+  // Remove from source
+  D[result.projectKey].conversations = D[result.projectKey].conversations.filter(c => c.id !== convId);
+  // Add to target
+  result.conv.project = D[targetKey].name;
+  D[targetKey].conversations.unshift(result.conv);
+  // Re-render list and close panel
+  reRenderConvList();
+  closeConvDetail();
+}
+
+function assignAndDismissBanner(key) {
+  dismissAssignBanner();
+  moveConvToProject(activeConvId || '', key);
+  // If no activeConvId (truly new unsent conv), just set pending
+  pendingProjectKey = key;
+}
+
+function dismissAssignBanner() {
+  const b = document.getElementById('assignBanner');
+  if (b) b.remove();
 }
 
 function closeConvDetail() {
