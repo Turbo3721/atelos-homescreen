@@ -563,10 +563,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .conv-assign-dismiss:hover{color:var(--text3)}
 
 /* Move to project in detail panel */
-.conv-detail-move-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.conv-detail-move-btn{padding:4px 12px;border-radius:20px;font-size:11.5px;font-weight:500;border:1px solid var(--border-lt);background:transparent;color:var(--text3);cursor:pointer;transition:all .15s;font-family:inherit}
-.conv-detail-move-btn:hover{border-color:var(--accent-b);color:var(--accent);background:var(--accent-d)}
-.conv-detail-move-btn.current{color:var(--text2);border-color:var(--border);cursor:default;font-weight:600}
+.conv-detail-menu-btn{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:7px;background:transparent;border:none;color:var(--text4);cursor:pointer;font-size:16px;line-height:1;transition:all .15s}
+.conv-detail-menu-btn:hover{background:var(--bg-hover);color:var(--text2)}
 
 /* Task add button + form */
 .task-add-btn{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:7px;border:1px solid var(--border-lt);background:transparent;color:var(--text4);cursor:pointer;transition:all .15s;flex-shrink:0}
@@ -1907,16 +1905,13 @@ function openConvDetail(convId) {
   // Body
   let bodyHtml = '';
 
-  // Option 1 — Move to project
+  // Option 1 — Move to project (⋮ menu)
   const convProjectKey = findConvById(c.id) ? findConvById(c.id).projectKey : 'vault';
-  const projectKeys = Object.keys(D);
   bodyHtml += `<div class="conv-detail-section">
     <div class="conv-detail-section-label">Project</div>
-    <div class="conv-detail-move-row">
-      ${projectKeys.map(k => {
-        const isCurrent = k === convProjectKey;
-        return `<button class="conv-detail-move-btn${isCurrent ? ' current' : ''}" ${isCurrent ? 'disabled' : `onclick="moveConvToProject('${c.id}','${k}')"`}>${D[k].name}</button>`;
-      }).join('')}
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:13px;color:var(--text2);font-weight:500">${D[convProjectKey] ? D[convProjectKey].name : 'All Projects'}</span>
+      <button class="conv-detail-menu-btn" onclick="showDetailProjectMenu(event,'${c.id}','${convProjectKey}')">&#8942;</button>
     </div>
   </div>`;
 
@@ -2014,6 +2009,42 @@ function removeConvTag(convId, tag) {
       `<span class="conv-tag" style="cursor:default">${t}<span class="conv-detail-tag-x" onclick="removeConvTag('${convId}','${t.replace(/'/g,"\\'")}')">✕</span></span>`
     ).join('');
   }
+}
+
+function showDetailProjectMenu(event, convId, currentKey) {
+  event.stopPropagation();
+  document.querySelectorAll('.conv-ctx-menu').forEach(m => m.remove());
+
+  const menu = document.createElement('div');
+  menu.className = 'conv-ctx-menu';
+
+  const moveTargets = Object.keys(D).filter(k => k !== currentKey);
+  menu.innerHTML = `<div class="conv-ctx-item" style="color:var(--text4);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;cursor:default;padding:6px 12px 4px">Move to</div>
+    <div class="conv-ctx-sep"></div>
+    ${moveTargets.map(k => `<div class="conv-ctx-item" onclick="confirmMoveConv('${convId}','${k}','${currentKey}')">${D[k].name}</div>`).join('')}`;
+
+  document.body.appendChild(menu);
+  const btn = event.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  menu.style.top = (rect.bottom + 4) + 'px';
+  menu.style.left = Math.max(8, rect.right - menu.offsetWidth) + 'px';
+  setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 0);
+}
+
+function confirmMoveConv(convId, targetKey, currentKey) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.id = 'moveConvOverlay';
+  overlay.innerHTML = `<div class="modal">
+    <div class="modal-title">Move conversation</div>
+    <p style="font-size:13.5px;color:var(--text2);line-height:1.6;margin-bottom:6px">Move this conversation from <strong>${D[currentKey] ? D[currentKey].name : 'All Projects'}</strong> to <strong>${D[targetKey].name}</strong>?</p>
+    <p style="font-size:12px;color:var(--text4);line-height:1.5">This will reassign it in the Chats sidebar. The conversation content is unchanged.</p>
+    <div class="modal-actions">
+      <button class="modal-btn ghost" onclick="document.getElementById('moveConvOverlay').remove()">Cancel</button>
+      <button class="modal-btn primary" onclick="document.getElementById('moveConvOverlay').remove();moveConvToProject('${convId}','${targetKey}')">Move</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
 }
 
 function moveConvToProject(convId, targetKey) {
