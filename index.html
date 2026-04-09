@@ -572,7 +572,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .conv-search-row .conv-search{flex:1;position:relative}
 .conv-tag-dropdown-btn{display:inline-flex;align-items:center;align-self:flex-start;gap:5px;padding:5px 11px;background:transparent;border:1px solid var(--border-lt);border-radius:20px;color:var(--text4);cursor:pointer;font-family:inherit;font-size:11.5px;transition:all .15s;white-space:nowrap}
 .conv-tag-dropdown-btn:hover,.conv-tag-dropdown-btn.open{background:var(--bg-hover);color:var(--text3);border-color:var(--border)}
-.conv-tag-dropdown-btn.active{color:var(--accent);background:var(--accent-d);border-color:var(--accent-b)}
+.conv-tag-dropdown-btn.active{color:var(--text4);background:transparent;border-color:var(--border-lt)}
 .conv-tag-dropdown{position:fixed;background:var(--bg-card2);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:200;min-width:200px;max-width:260px;padding:6px;animation:menuIn .12s ease;max-height:320px;overflow-y:auto}
 .conv-tag-dropdown::-webkit-scrollbar{width:4px}
 .conv-tag-dropdown::-webkit-scrollbar-thumb{background:var(--border-lt);border-radius:2px}
@@ -1518,9 +1518,7 @@ function renderSideTab(tab, d) {
   } else if (tab === 'conversations') {
     const ICON_TAG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
     const ICON_CHEVRON = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
-    const tagCount = activeTagFilters.size;
-    const tagBtnLabel = tagCount === 0 ? 'Tags' : tagCount === 1 ? [...activeTagFilters][0] : `Tags (${tagCount})`;
-    const tagBtnActive = tagCount > 0 ? ' active' : '';
+    const tagBtnActive = '';
 
     document.getElementById('sideSearchWrap').style.display = '';
     document.getElementById('sideSearchWrap').innerHTML = `<div style="display:flex;flex-direction:column;gap:6px">
@@ -1530,8 +1528,8 @@ function renderSideTab(tab, d) {
         <button class="side-search-clear" onclick="clearConvSearch()">&times;</button>
       </div>
       <div id="convActiveFilters"></div>
-      <button class="conv-tag-dropdown-btn${tagBtnActive}" id="convTagBtn" onclick="toggleTagDropdown(event)" title="Filter by tag">
-        ${ICON_TAG} ${tagBtnLabel} ${ICON_CHEVRON}
+      <button class="conv-tag-dropdown-btn" id="convTagBtn" onclick="toggleTagDropdown(event)" title="Filter by tag">
+        ${ICON_TAG} Tags ${ICON_CHEVRON}
       </button>
     </div>`;
     refreshFilterChips();
@@ -1675,10 +1673,8 @@ function refreshTagBtn() {
   if (!btn) return;
   const ICON_TAG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
   const ICON_CHEVRON = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
-  const count = activeTagFilters.size;
-  const label = count === 0 ? 'Tags' : count === 1 ? [...activeTagFilters][0] : `Tags (${count})`;
-  btn.innerHTML = `${ICON_TAG} ${label} ${ICON_CHEVRON}`;
-  btn.className = `conv-tag-dropdown-btn${count > 0 ? ' active' : ''}`;
+  btn.innerHTML = `${ICON_TAG} Tags ${ICON_CHEVRON}`;
+  btn.className = `conv-tag-dropdown-btn`;
 }
 
 function reRenderConvList() {
