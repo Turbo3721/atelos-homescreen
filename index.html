@@ -64,8 +64,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .main{display:flex;flex:1;overflow:hidden}
 
 /* ── Sidebar ── */
-.sidebar{width:var(--sidebar-width);background:var(--bg-side);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;position:relative;transition:width .25s ease,opacity .2s ease,border-color .25s ease}
-.sidebar.collapsed{width:0;opacity:0;border-right-color:transparent}
+.sidebar{flex:0 0 var(--sidebar-width);background:var(--bg-side);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;position:relative;transition:flex-basis .25s ease,opacity .2s ease,border-color .25s ease}
+.sidebar.collapsed{flex-basis:0;opacity:0;border-right-color:transparent}
 .side-resize-handle{position:absolute;top:0;right:-3px;width:6px;height:100%;cursor:col-resize;z-index:20;background:transparent;transition:background .15s}
 .side-resize-handle:hover,.side-resize-handle.dragging{background:var(--accent-b)}
 .side-top{padding:20px 22px 0}
